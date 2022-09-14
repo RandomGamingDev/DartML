@@ -1,0 +1,18 @@
+[package]
+name = "TestingDartML"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "DartML"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.5"
+savefile = "0.10.1"
+savefile-derive = "0.10.1"
+libc = "0.2.132"
+void = "1.0.2"
