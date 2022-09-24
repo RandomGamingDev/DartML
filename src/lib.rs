@@ -38,8 +38,8 @@ impl SaveNeuron {
             val: self.val,
             off: self.off,
             x: self.x,
-            to: self.to.iter().cloned().collect::<BTreeSet<usize>>(),
-            from: self.from.iter().cloned().collect::<BTreeSet<usize>>()
+            to: self.to.iter().cloned().collect::<HashSet<usize>>(),
+            from: self.from.iter().cloned().collect::<HashSet<usize>>()
         };
     }
 }
@@ -70,8 +70,8 @@ impl SaveBrain {
             inputs: self.inputs.iter().cloned().collect::<BTreeSet<usize>>(),
             activated_neurons: self.activated_neurons.clone(),
             neurons: self.neurons.iter().map(|neuron| neuron.neuron()).collect::<Vec<Neuron>>(),
-            outputs: self.outputs.iter().cloned().collect::<BTreeSet<usize>>(),
-            empty: self.empty.iter().cloned().collect::<BTreeSet<usize>>()
+            outputs: self.outputs.iter().cloned().collect::<HashSet<usize>>(),
+            empty: self.empty.iter().cloned().collect::<HashSet<usize>>()
         };
     }
 }
@@ -83,8 +83,8 @@ pub struct Neuron {
     pub val: f32, // The value of the neuron
     pub off: f32, // The offset to apply to the value when passing it on to the next ones
     pub x: f32, // The x position of the neuron
-    pub to: BTreeSet<usize>, // The neurons that this neuron feeds into
-    pub from: BTreeSet<usize> // The neurons feed into this neuron
+    pub to: HashSet<usize>, // The neurons that this neuron feeds into
+    pub from: HashSet<usize> // The neurons feed into this neuron
 }
 
 impl Neuron {
@@ -93,8 +93,8 @@ impl Neuron {
             val: 0.0f32,
             off: 1.0f32,
             x: 0.0f32,
-            to: BTreeSet::<usize>::new(),
-            from: BTreeSet::<usize>::new()
+            to: HashSet::<usize>::new(),
+            from: HashSet::<usize>::new()
         };
     }
 }
@@ -104,8 +104,8 @@ pub struct Brain {
     pub inputs: BTreeSet<usize>, // The input layer
     pub activated_neurons: Vec<usize>, // The activated neurons
     pub neurons: Vec<Neuron>, // The hidden layers which do the actual calculations
-    pub outputs: BTreeSet<usize>, // The output layer
-    pub empty: BTreeSet<usize> // The spots in the brain that are empty
+    pub outputs: HashSet<usize>, // The output layer
+    pub empty: HashSet<usize> // The spots in the brain that are empty
 }
 
 #[repr(C)]
@@ -121,50 +121,23 @@ pub enum Mutation { // The different posible mutations
 }
 
 impl Brain {
-    fn to_brain_ptr(void_ptr: *mut c_void) -> &'static mut Brain {
-        return unsafe { mem::transmute::<*mut c_void, &mut Brain>(void_ptr) };
-    }
-
-    fn to_void_ptr(brain_ptr: &mut Brain) -> *mut c_void {
-        return unsafe { mem::transmute::<&mut Brain, *mut c_void>(brain_ptr) };
-    }
-
     pub fn new() -> Brain { //Creates a new instance of Brain
         return Brain {
             inputs: BTreeSet::<usize>::new(),
             activated_neurons: Vec::<usize>::new(),
             neurons: Vec::<Neuron>::new(),
-            outputs: BTreeSet::<usize>::new(),
-            empty: BTreeSet::<usize>::new()
+            outputs: HashSet::<usize>::new(),
+            empty: HashSet::<usize>::new()
         };
-    }
-
-    #[no_mangle]
-    pub extern "C" fn new_brain() -> *mut c_void {
-        return Brain::to_void_ptr(&mut Brain::new());
     }
 
     pub fn load(file_name: &str) -> Brain { // Loads a binary file as a brain
         return savefile::prelude::load_file::<SaveBrain, &str>(file_name, 0).unwrap().brain();
     }
 
-    /*
-    #[no_mangle]
-    pub extern "C" fn brain_load(file_name: &CString) -> *mut c_void {
-        return Brain::to_void_ptr(&mut Brain::load(file_name.to_str().unwrap()));
-    }
-    */
-
     pub fn save(self, file_name: &str) { // Saves the brain as a binary file
         savefile::prelude::save_file(file_name, 0, &SaveBrain::from(self)).unwrap();
     }
-
-    /*
-    #[no_mangle]
-    pub extern "C" fn brain_save(self_ptr: *mut c_void, file_name: &CString) {
-        Brain::save(Brain::to_brain_ptr(self_ptr).clone(), file_name.to_str().unwrap());
-    }
-    */
 
     pub fn get_new_neuron(&mut self) -> usize {
         let mut neuron: usize;
@@ -183,20 +156,10 @@ impl Brain {
         return neuron;
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_get_new_neuron(self_ptr: *mut c_void) -> usize {
-        return Brain::to_brain_ptr(self_ptr).get_new_neuron();
-    }
-
     pub fn add_input(&mut self) { // Adds an input neuron
         let added_input: usize = self.get_new_neuron();
         self.neurons[added_input].x = 0.0;
         self.inputs.insert(added_input);
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_add_input(self_ptr: *mut c_void) {
-        Brain::to_brain_ptr(self_ptr).add_input();
     }
 
     pub fn add_inputs(&mut self, num_inputs: usize) {
@@ -205,20 +168,10 @@ impl Brain {
         }
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_add_inputs(self_ptr: *mut c_void, num_inputs: usize) {
-        Brain::to_brain_ptr(self_ptr).add_inputs(num_inputs);
-    }
-
     pub fn add_output(&mut self) { // Adds an output neuron
         let added_output: usize = self.get_new_neuron();
         self.neurons[added_output].x = 1.0;
         self.outputs.insert(added_output);
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_add_output(self_ptr: *mut c_void) {
-        Brain::to_brain_ptr(self_ptr).add_output();
     }
 
     pub fn add_outputs(&mut self, num_outputs: usize) {
@@ -227,30 +180,15 @@ impl Brain {
         }
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_add_outputs(self_ptr: *mut c_void, num_outputs: usize) {
-        Brain::to_brain_ptr(self_ptr).add_outputs(num_outputs);
-    }
-
     pub fn add_hidden(&mut self) { // Adds a hidden neuron
         let added_hidden: usize = self.get_new_neuron();
         self.neurons[added_hidden].x = rand::thread_rng().gen_range(0.0f32..1.0f32);
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_add_hidden(self_ptr: *mut c_void) {
-        Brain::to_brain_ptr(self_ptr).add_hidden();
     }
 
     pub fn add_hiddens(&mut self, num_hiddens: usize) {
         for _ in 0..num_hiddens {
             self.add_hidden();
         }
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_add_hiddens(self_ptr: *mut c_void, num_hiddens: usize) {
-        Brain::to_brain_ptr(self_ptr).add_hiddens(num_hiddens);
     }
 
     pub fn remove_neuron(&mut self, neuron: usize) { // Removes a neuron
@@ -264,29 +202,14 @@ impl Brain {
         self.empty.insert(neuron);
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_remove_neuron(self_ptr: *mut c_void, neuron: usize) {
-        Brain::to_brain_ptr(self_ptr).remove_neuron(neuron);
-    }
-
     pub fn remove_input(&mut self, input: usize) { // Removes an input neuron
         self.remove_neuron(input);
         self.inputs.remove(&input);
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_remove_input(self_ptr: *mut c_void, input: usize) {
-        Brain::to_brain_ptr(self_ptr).remove_input(input);
-    }
-    
     pub fn remove_output(&mut self, output: usize) { // Removes an output neuron
         self.remove_neuron(output);
         self.outputs.remove(&output);
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_remove_output(self_ptr: *mut c_void, output: usize) {
-        Brain::to_brain_ptr(self_ptr).remove_output(output);
     }
 
     pub fn feed_input(&mut self, inputs: Vec<f32>) { // Feeds the input data into the input neurons
@@ -298,22 +221,8 @@ impl Brain {
         }
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_feed_input(self_ptr: *mut c_void, inputs: *mut f32, len: usize) {
-        let mut inputs_vec: Vec<f32> = Vec::new();
-        for input in 0..len {
-            inputs_vec.push(unsafe { *inputs.add(input) });
-        }
-        Brain::to_brain_ptr(self_ptr).feed_input(inputs_vec);
-    }
-    
     pub fn push_input(&mut self) { // Pushes the input neurons to the active neurons vector
         self.activated_neurons.append(&mut self.inputs.clone().into_iter().collect());
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_push_input(self_ptr: *mut c_void) {
-        Brain::to_brain_ptr(self_ptr).push_input();
     }
 
     pub fn get_outputs(&self) -> Vec<f32>{ // Returns the output as a vector of floats
@@ -324,20 +233,10 @@ impl Brain {
         return outputs;
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_get_outputs(self_ptr: *mut c_void) -> *mut f32 {
-        return Brain::to_brain_ptr(self_ptr).get_outputs().as_mut_ptr();
-    }
-
     pub fn clear_outputs(&mut self) {
         for output in &self.outputs {
             self.neurons[*output].val = 0.0;
         }
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_clear_outputs(self_ptr: *mut c_void) {
-        Brain::to_brain_ptr(self_ptr).clear_outputs();
     }
 
     pub fn tick(&mut self) { // Runs a full tick of the brain
@@ -358,20 +257,10 @@ impl Brain {
         self.activated_neurons.drain(0..to_remove);
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_tick(self_ptr: *mut c_void) {
-        Brain::to_brain_ptr(self_ptr).tick();
-    }
-
     pub fn full_run(&mut self) { // Runs the brain until it finishes
         while self.activated_neurons.len() != 0 {
             self.tick();
         }
-    }
-
-    #[no_mangle]
-    pub extern "C" fn brain_full_run(self_ptr: *mut c_void) {
-        Brain::to_brain_ptr(self_ptr).full_run();
     }
 
     fn get_mutation(&self) -> Mutation { // Gets the mutation
@@ -457,29 +346,7 @@ impl Brain {
         return true;
     }
 
-    #[no_mangle]
-    pub extern "C" fn brain_mutate(self_ptr: *mut c_void, mutation: Mutation, min_off: f32, max_off: f32) -> bool {
-        return Brain::to_brain_ptr(self_ptr).mutate(mutation, min_off, max_off);
-    }
-
     pub fn randomly_mutate(&mut self, min_off: f32, max_off: f32) -> bool {
         return self.mutate(self.get_mutation(), min_off, max_off);
     }
-
-    #[no_mangle]
-    pub extern "C" fn brain_randomly_mutate(self_ptr: *mut c_void, min_off: f32, max_off:f32) -> bool {
-        return Brain::to_brain_ptr(self_ptr).randomly_mutate(min_off, max_off);
-    }
 }
-
-#[no_mangle]
-pub extern "C" fn test_function() {
-    println!("This is from the test function!");
-}
-
-#[no_mangle]
-pub extern "C" fn test_test_test(testVar: BTreeSet<usize>) {
-
-}
-
-// Everything works except for the CStr, replace those and ur done
